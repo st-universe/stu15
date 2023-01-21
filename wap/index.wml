@@ -1,0 +1,21 @@
+<?php
+header("Content-type: text/vnd.wap.wml");                 // Sag dem Browser, dass jetzt WML kommt
+header("Expires: Mon, 26 Jul 1997 05:00:00 GMT"); // Ein Datum der Vergangenheit um nicht gecached zu werden
+header("Last-Modified: " . gmdate("D, d M Y H:i:s"). " GMT"); 
+header("Cache-Control: no-cache, must-revalidate"); 
+header("Pragma: no-cache");
+header("Content-Type: text/vnd.wap.wml");
+echo "<?xml version=\"1.0\"?>\n";
+echo "<!DOCTYPE wml PUBLIC \"-//WAPFORUM//DTD WML 1.1//EN\" \"http://www.wapforum.org/DTD/wml_1.1.xml\">\n";
+?>
+<wml>
+<card id="home" title="STU Login">
+<p>
+User<br/>
+<input type="text" size="5" name="luser" /><br/>
+Passwort<br/>
+<input type="password" size="5" name="pass" /><br/>
+<anchor><go href="main.wml" method="get"><postfield name="luser" value="$(luser)" /><postfield name="pass" value="$(pass)" /></go>Login</anchor>
+</p>
+</card>
+</wml>

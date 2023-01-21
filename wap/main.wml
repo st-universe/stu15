@@ -1,0 +1,47 @@
+<?php
+ini_set( "session.use_trans_sid", "0" );
+ini_set( "session.use_cookies", "0" );
+session_start();
+header("Content-type: text/vnd.wap.wml");                 // Sag dem Browser, dass jetzt WML kommt
+header("Expires: Mon, 26 Jul 1997 05:00:00 GMT"); // Ein Datum der Vergangenheit um nicht gecached zu werden
+header("Last-Modified: " . gmdate("D, d M Y H:i:s"). " GMT"); 
+header("Cache-Control: no-cache, must-revalidate"); 
+header("Pragma: no-cache");
+header("Content-Type: text/vnd.wap.wml");
+echo "<?xml version=\"1.0\"?>\n";
+echo "<!DOCTYPE wml PUBLIC \"-//WAPFORUM//DTD WML 1.1//EN\" \"http://www.wapforum.org/DTD/wml_1.1.xml\">\n";
+include_once("../inc/config.inc.php");
+include_once($global_path."/class/db.class.php");
+$myDB = new db;
+if ($_SESSION["login"] != 1 && (!$_GET["pass"] || !$_GET["luser"])) exit;
+if ($_SESSION["login"] != 1) $result = $myDB->query("SELECT id,vac,vactime,kn_lz FROM stu_user WHERE pass='".md5($_GET["pass"])."' AND login='".addslashes(str_replace("\"","",$_GET["luser"]))."'",4);
+if ($_SESSION["login"] == 1 || ($result != 0 && ($result[vac] == 0 || $result[vactime] < time())))
+{
+	if ($_SESSION["login"] != 1)
+	{
+		$_SESSION["uid"] = $result[id];
+		$_SESSION["knlz"] = $result[kn_lz];
+		$_SESSION["login"] = 1;
+	}
+	echo '<wml>
+<card id="home" title="STU Main">
+<p>
+<b>Hauptseite</b><br/><br/>
+-&nbsp;<a href="comm.wml?'.session_name()."=".session_id().'">Kommunikation</a><br/>
+-&nbsp;<a href="options.wml?'.session_name()."=".session_id().'">Einstellungen</a><br/>
+-&nbsp;<a href="forum/index.wml?'.session_name()."=".session_id().'">Forum</a><br/>';
+echo 'Neue private PMs: <a href="comm.wml?p=prvm&amp;'.session_name()."=".session_id().'">'.$myDB->query("SELECT COUNT(id) FROM stu_pms WHERE recipient=".$_SESSION["uid"]." AND new=1 AND cate=1 AND recip_del=0",1).'</a><br/>
+Neue KN-Msg: <a href="comm.wml?p=cnet&amp;'.session_name()."=".session_id().'&amp;mid='.$_SESSION["knlz"].'">'.$myDB->query("SELECT COUNT(id) FROM stu_kn_messages WHERE id>".$_SESSION["knlz"],1).'</a>';
+}
+else
+{
+echo '<wml>
+<card id="home" title="STU Main">
+<p>
+Login fehlgeschlagen<br/>
+<do type="prev" label="zur&#252;ck"><prev /></do>';
+}
+?>
+</p>
+</card>
+</wml>

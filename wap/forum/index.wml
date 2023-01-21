@@ -1,0 +1,75 @@
+<?php
+#####################################################
+#		phpbb2-W@P									#
+#													#
+# PHPBB2 via WAP									#
+# Version 0.1										#
+#													#
+# Author: Daniel Jakob								#
+# Datum: 22.04.2005									#
+#####################################################
+
+// Keine Cookies via WAP
+ini_set( "session.use_trans_sid", "0" );
+ini_set( "session.use_cookies", "0" );
+
+// Session initialisieren
+session_start();
+
+// Konfiguration einbinden und Datenbank initialisieren
+include_once("../../inc/wconfig.inc.php");
+include_once($global_path."/class/db.class.php");
+$myDB = new db;
+
+// Fand ein Login statt?
+if ($_GET[a] == "login" && is_string($_GET[un]) && is_string($_GET[up]))
+{
+	// Prüfung der Logindaten
+	$lr = $myDB->query("SELECT user_id,username FROM phpbb_users WHERE username='".stripslashes($_GET[un])."' AND user_password='".md5($_GET[up])."' AND user_active=1",4);
+	if ($lr == 0) echo '<small>Login fehlgeschlagen</small><br/>';
+	else
+	{
+		// Laden der Userdaten in die Session-Variable
+		$_SESSION["fuid"] = $lr["user_id"];
+		$_SESSION["fun"] = $lr["username"];
+		$_SESSION["flog"] = 1;
+	}
+}
+
+// Header senden
+header("Content-type: text/vnd.wap.wml");
+header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
+header("Last-Modified: " . gmdate("D, d M Y H:i:s"). " GMT"); 
+header("Cache-Control: no-cache, must-revalidate"); 
+header("Pragma: no-cache");
+header("Content-Type: text/vnd.wap.wml");
+echo "<?xml version=\"1.0\"?>\n";
+echo "<!DOCTYPE wml PUBLIC \"-//WAPFORUM//DTD WML 1.1//EN\" \"http://www.wapforum.org/DTD/wml_1.1.xml\">\n";
+
+// Hauptseite generieren
+$lr = $myDB->query("SELECT a.*,b.cat_title FROM phpbb_forums as a LEFT JOIN phpbb_categories as b USING(cat_id) WHERE a.auth_view=0 AND a.auth_read=0 ORDER BY b.cat_order,a.forum_order");
+	echo '<wml>
+<card id="home" title="STU FORUM">
+<p><small>';
+$cid = 0;
+
+// Begrüßung wenn eingeloggt
+if ($_SESSION["flog"] == 1) echo 'Hallo '.$_SESSION["fun"].'<br/>';
+
+// Schleife für Kategorien und Foren
+while($data=mysql_fetch_assoc($lr))
+{
+	if ($data[cat_id] != $cid)
+	{
+		$cid = $data[cat_id];
+		echo htmlentities($data[cat_title])."<br/>";
+	}
+	echo '<a href="showboard.wml?bid='.$data[forum_id].'&amp;'.session_name()."=".session_id().'">'.htmlentities($data[forum_name]).'</a><br/>';
+}
+
+// Link zum Login ausgeben
+echo '<br/><br/><a href="login.wml?'.session_name()."=".session_id().'">Login</a>';
+?>
+</small></p>
+</card>
+</wml>

@@ -1,0 +1,30 @@
+<?php
+session_start();
+header("Content-type: text/vnd.wap.wml");                 // Sag dem Browser, dass jetzt WML kommt
+header("Expires: Mon, 26 Jul 1997 05:00:00 GMT"); // Ein Datum der Vergangenheit um nicht gecached zu werden
+header("Last-Modified: " . gmdate("D, d M Y H:i:s"). " GMT"); 
+header("Cache-Control: no-cache, must-revalidate"); 
+header("Pragma: no-cache");
+echo "<?xml version=\"1.0\"?>\n";
+echo "<!DOCTYPE wml PUBLIC \"-//WAPFORUM//DTD WML 1.1//EN\" \"http://www.wapforum.org/DTD/wml_1.1.xml\">\n"; 
+if ($_SESSION["login"] != 1) exit;
+include_once("../inc/config.inc.php");
+include_once($global_path."/class/db.class.php");
+$myDB = new db;
+include_once($global_path."/wap/opt.class.php");
+$myOpt = new opt;
+if ($act == "umo") $return = $myOpt->actumo();
+$result = $myDB->query("SELECT vac,pvac FROM stu_user WHERE id=".$_SESSION["uid"],4);
+?>
+<wml>
+<card id="home" title="STU Optionen">
+<p>
+<b>Einstellungen</b><br/><br/>
+<?php
+if ($return) echo "<small>".$return."</small><br/>";
+echo '<a href="options.wml?act=umo&amp;'.session_name()."=".session_id().'">Urlaubsmodus aktivierten ('.$result[pvac].')</a><br/><br/>
+<a href="main.wml?'.session_name()."=".session_id().'">Hauptmen&uuml;</a>';
+?>
+</p>
+</card>
+</wml>

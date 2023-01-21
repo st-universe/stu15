@@ -1,0 +1,39 @@
+<?php
+session_start();
+header("Content-type: text/vnd.wap.wml");                 // Sag dem Browser, dass jetzt WML kommt
+header("Expires: Mon, 26 Jul 1997 05:00:00 GMT"); // Ein Datum der Vergangenheit um nicht gecached zu werden
+header("Last-Modified: " . gmdate("D, d M Y H:i:s"). " GMT"); 
+header("Cache-Control: no-cache, must-revalidate"); 
+header("Pragma: no-cache");
+header("Content-Type: text/vnd.wap.wml");
+echo "<?xml version=\"1.0\"?>\n";
+echo "<!DOCTYPE wml PUBLIC \"-//WAPFORUM//DTD WML 1.1//EN\" \"http://www.wapforum.org/DTD/wml_1.1.xml\">\n";
+include_once("../../inc/wconfig.inc.php");
+include_once($global_path."/class/db.class.php");
+$myDB = new db;
+if (!$_GET[bid] || !is_numeric($_GET[bid])) exit;
+if (!$_GET[s] || !is_numeric($_GET[s])) $_GET[s] = 1;
+
+$bd = $myDB->query("SELECT forum_name FROM phpbb_forums WHERE forum_id=".abs($_GET[bid])." AND auth_read=0 AND auth_view=0",4);
+if ($bd == 0) exit;
+$lr = $myDB->query("SELECT a.topic_id,a.topic_title,a.topic_last_post_id,b.post_time,b.poster_id FROM phpbb_topics as a LEFT JOIN phpbb_posts as b ON a.topic_last_post_id=b.post_id WHERE a.forum_id=".abs($_GET[bid])." ORDER BY a.topic_last_post_id DESC LIMIT ".((abs($_GET[s])-1)*6).",6");
+
+	echo '<wml>
+<card id="home" title="STU FORUM">
+<p><small><a href="index.wml?'.session_name()."=".session_id().'">&Uuml;bersicht</a><br/>
+<b>'.htmlentities($bd[forum_name]).'</b><br/>';
+$pc = $myDB->query("SELECT COUNT(topic_id) FROM phpbb_topics WHERE forum_id=".abs($_GET[bid]),1);
+if ($pc > 6)
+{
+	echo ($_GET[s] == 1 ? "" : '<a href="showboard.wml?s=1&amp;bid='.abs($_GET[bid]).'&amp;'.session_name()."=".session_id().'">&lt;&lt;</a>&nbsp;<a href="showboard.wml?s='.(abs($_GET[s])-1).'&amp;bid='.abs($_GET[bid]).'&amp;'.session_name()."=".session_id().'">&lt;</a> ').'Seite '.abs($_GET[s]).($pc > $_GET[s]*6 ? ' <a href="showboard.wml?s='.(abs($_GET[s])+1).'&amp;bid='.$_GET[bid].'&amp;'.session_name()."=".session_id().'">&gt;</a>&nbsp;<a href="showboard.wml?s='.(ceil($pc/6)).'&amp;bid='.$_GET[bid].'&amp;'.session_name()."=".session_id().'">&gt;&gt;</a>' : "").'<br/><br/>';
+}
+while($data=mysql_fetch_assoc($lr))
+{
+	echo '<a href="showtopic.wml?tid='.$data[topic_id].'&amp;'.session_name()."=".session_id().'">'.htmlentities($data[topic_title]).'</a><br/>
+	'.date("d.m.y H:i",$data[post_time]).' [<a href="showtopic.wml?tid='.$data[topic_id].'&amp;pid='.$data[topic_last_post_id].'&amp;'.session_name()."=".session_id().'">&gt;&gt;</a>]<br/>
+	'.htmlentities($myDB->query("SELECT username FROM phpbb_users WHERE user_id=".$data[poster_id],1)).'<br/>';
+}
+?>
+</small></p>
+</card>
+</wml>

@@ -1,0 +1,93 @@
+<?php
+session_start();
+header("Content-type: text/vnd.wap.wml");                 // Sag dem Browser, dass jetzt WML kommt
+header("Expires: Mon, 26 Jul 1997 05:00:00 GMT"); // Ein Datum der Vergangenheit um nicht gecached zu werden
+header("Last-Modified: " . gmdate("D, d M Y H:i:s"). " GMT"); 
+header("Cache-Control: no-cache, must-revalidate"); 
+header("Pragma: no-cache");
+echo "<?xml version=\"1.0\"?>\n";
+echo "<!DOCTYPE wml PUBLIC \"-//WAPFORUM//DTD WML 1.1//EN\" \"http://www.wapforum.org/DTD/wml_1.1.xml\">\n"; 
+if ($_SESSION["login"] != 1) exit;
+include_once("../inc/config.inc.php");
+include_once($global_path."/class/db.class.php");
+$myDB = new db;
+?>
+
+<wml>
+<card id="home" title="STU Komm">
+<p>
+<?php
+echo '<b><a href="comm.wml?'.session_name()."=".session_id().'">Kommunikation</a></b><br/>';
+if (!$_GET[p])
+{
+if ($_GET[a] == "spm" && is_numeric($_GET[rec]) && $_GET[rec] > 0 && is_string($_GET[txt]))
+{
+	if ($myDB->query("SELECT id FROM stu_user WHERE id=".$_GET[rec],1) == 0) exit;
+	$myDB->query("INSERT INTO stu_pms (sender,recipient,date,message,cate) VALUES ('".$_SESSION["uid"]."','".$_GET[rec]."',NOW(),'".addslashes($_GET[txt])."','1')");
+	echo 'PM gesendet<br/>';
+}
+echo '-&nbsp;<a href="comm.wml?p=prvm&amp;'.session_name()."=".session_id().'">Nachrichten</a>&nbsp;('.$myDB->query("SELECT count(id) FROM stu_pms WHERE new=1 AND cate=1 AND recipient=".$_SESSION["uid"],1).'/'.$myDB->query("SELECT COUNT(id) FROM stu_pms WHERE recipient=".$_SESSION["uid"]." AND cate=1 AND recip_del=0",1).')<br/>
+--&nbsp;<a href="comm.wml?p=spm&amp;'.session_name()."=".session_id().'">PM senden</a><br/>
+-&nbsp;<a href="comm.wml?p=cnet&amp;'.session_name()."=".session_id().'">Komm-Netz</a><br/><br/>
+<a href="main.wml?'.session_name()."=".session_id().'">Hauptmen&uuml;</a>';
+}
+if ($_GET[p] == "cnet")
+{
+if ($_GET[a] == "slz" && is_numeric($_GET[mid]))
+{
+	$myDB->query("UPDATE stu_user SET kn_lz=".abs($_GET[mid])." WHERE id=".$_SESSION["uid"]);
+	$_SESSION["knlz"] = $_GET[mid];
+	echo "<small>Lesezeichen gesetzt</small><br/>";
+}
+if (!$_GET[mid] || $_GET[mid] <= 0 || !is_numeric($_GET[mid])) $msg = $myDB->query("SELECT a.id,UNIX_TIMESTAMP(a.date) as date_tsp,a.text,b.user FROM stu_kn_messages as a LEFT JOIN stu_user as b ON a.user_id=b.id ORDER BY a.id DESC LIMIT 1",4);
+else $msg = $myDB->query("SELECT a.id,UNIX_TIMESTAMP(a.date) as date_tsp,a.text,b.user FROM stu_kn_messages as a LEFT JOIN stu_user as b ON a.user_id=b.id WHERE a.id=".$_GET[mid],4);
+echo '<small><a href="comm.wml?p=cnet&amp;mid='.$myDB->query("SELECT id FROM stu_kn_messages WHERE id>".$msg[id]." ORDER BY id ASC LIMIT 1",1).'&amp;'.session_name()."=".session_id().'">&lt;</a>&nbsp;<a href="comm.wml?p=cnet&amp;mid='.$msg[id].'&amp;a=slz&amp;'.session_name()."=".session_id().'">Lesezeichen</a>&nbsp;<a href="comm.wml?p=cnet&amp;mid='.$myDB->query("SELECT id FROM stu_kn_messages WHERE id<".$msg[id]." ORDER BY id DESC LIMIT 1",1).'&amp;'.session_name()."=".session_id().'">&gt;</a><br/>
+Autor:&nbsp;'.htmlentities(stripslashes(strip_tags($msg[user]))).'<br/>
+Datum:&nbsp;'.date("d.m.y H:i",$msg[date_tsp]).'</small><br/><br/>'.nl2br(htmlentities(stripslashes(strip_tags($msg[text])))).'<br/>
+<small><a href="comm.wml?p=cnet&amp;mid='.$myDB->query("SELECT id FROM stu_kn_messages WHERE id>".$msg[id]." ORDER BY id ASC LIMIT 1",1).'&amp;'.session_name()."=".session_id().'">&lt;</a>&nbsp;<a href="comm.wml?p=cnet&amp;mid='.$msg[id].'&amp;a=slz&amp;'.session_name()."=".session_id().'">Lesezeichen</a>&nbsp;<a href="comm.wml?p=cnet&amp;mid='.$myDB->query("SELECT id FROM stu_kn_messages WHERE id<".$msg[id]." ORDER BY id DESC LIMIT 1",1).'&amp;'.session_name()."=".session_id().'">&gt;</a><br/>
+<a href="comm.wml?'.session_name()."=".session_id().'">Kommunikation</a></small>';
+}
+if ($_GET[p] == "prvm")
+{
+if ($_GET[a] == "dpm" && is_numeric($_GET[pid]) && $_GET[pid] > 0)
+{
+	$myDB->query("DELETE FROM stu_pms WHERE id=".$_GET[pid]." AND recipient=".$_SESSION["uid"]);
+	echo 'PM gel&ouml;scht<br/>';
+}
+if ($_GET[a] == "mar" && is_numeric($_GET[mid]) && $_GET[mid] > 0)
+{
+	$myDB->query("UPDATE stu_pms SET new=0 WHERE id=".$_GET[mid]." AND recipient=".$_SESSION["uid"]);
+	echo 'PM als gelesen markiert<br/>';
+}
+if (!$_GET[mid] || $_GET[mid] <= 0 || !is_numeric($_GET[mid])) $msg = $myDB->query("SELECT a.id,UNIX_TIMESTAMP(a.date) as date_tsp,a.sender,a.message,a.new,b.user FROM stu_pms as a LEFT JOIN stu_user as b ON a.sender=b.id WHERE a.cate=1 AND a.recip_del=0 AND a.recipient=".$_SESSION["uid"]." ORDER BY a.id DESC LIMIT 1",4);
+else $msg = $myDB->query("SELECT a.id,UNIX_TIMESTAMP(a.date) as date_tsp,a.sender,a.message,a.new,b.user FROM stu_pms as a LEFT JOIN stu_user as b ON a.sender=b.id WHERE a.recipient=".$_SESSION["uid"]." AND a.id=".$_GET[mid],4);
+if ($msg == 0) echo 'Keine PMs vorhanden<br/>';
+else
+{
+echo '<a href="comm.wml?p=prvm&amp;mid='.$myDB->query("SELECT id FROM stu_pms WHERE id>".$msg[id]." AND cate=1 AND recipient=".$_SESSION["uid"]." AND recip_del=0 ORDER BY id ASC LIMIT 1",1).'&amp;'.session_name()."=".session_id().'">zur&uuml;ck</a>&nbsp;|&nbsp;<a href="comm.wml?p=prvm&amp;mid='.$myDB->query("SELECT id FROM stu_pms WHERE id<".$msg[id]." AND cate=1 AND recipient=".$_SESSION["uid"]." AND recip_del=0 ORDER BY id DESC LIMIT 1",1).'&amp;'.session_name()."=".session_id().'">vor</a><br/>
+<small>Autor:&nbsp;'.htmlentities(stripslashes(strip_tags($msg[user]))).'</small><br/>
+<small>Datum:&nbsp;'.date("d.m.Y H:i",$msg[date_tsp]).'</small><br/>
+<small>Status:&nbsp;'.($msg['new'] == 1 ? "Neu" : "Gelesen").'</small><br/><br/>'.nl2br(htmlentities(stripslashes(strip_tags($msg[message])))).'<br/>';
+if ($msg['new'] == 1) echo '<a href="comm.wml?p=prvm&amp;a=mar&amp;mid='.$msg[id].'&amp;'.session_name()."=".session_id().'">gelesen</a><br/>';
+echo '<a href="comm.wml?p=rpl&amp;rec='.$msg[sender].'&amp;'.session_name()."=".session_id().'">antworten</a>&nbsp;|&nbsp;<a href="comm.wml?p=prvm&amp;a=dpm&amp;pid='.$msg[id].'&amp;'.session_name()."=".session_id().'">l&ouml;schen</a><br/>
+<a href="comm.wml?p=prvm&amp;mid='.$myDB->query("SELECT id FROM stu_pms WHERE id>".$msg[id]." AND cate=1 AND recipient=".$_SESSION["uid"]." AND recip_del=0 ORDER BY id ASC LIMIT 1",1).'&amp;'.session_name()."=".session_id().'">zur&uuml;ck</a>&nbsp;|&nbsp;<a href="comm.wml?p=prvm&amp;mid='.$myDB->query("SELECT id FROM stu_pms WHERE id<".$msg[id]." AND cate=1 AND recipient=".$_SESSION["uid"]." AND recip_del=0 ORDER BY id DESC LIMIT 1",1).'&amp;'.session_name()."=".session_id().'">vor</a><br/>';
+}
+echo '<a href="comm.wml?'.session_name()."=".session_id().'">Kommunikation</a>';
+}
+if ($_GET[p] == "rpl")
+{
+echo '<small>Antwort an '.htmlspecialchars(stripslashes(strip_tags($myDB->query("SELECT user FROM stu_user WHERE id=".$_GET[rec],1)))).' verfassen</small><br/>
+<input type="text" size="9" name="txt" /><br/>
+<anchor><go href="comm.wml" method="get"><postfield name="a" value="spm" /><postfield name="rec" value="'.$_GET[rec].'"/><postfield name="txt" value="$(txt)" /><postfield name="'.session_name().'" value="'.session_id().'" /></go>senden</anchor>';
+}
+if ($_GET[p] == "spm")
+{
+echo 'Nachricht&nbsp;schreiben<br/>
+Empf&auml;nger-ID:&nbsp;<input type="text" size="4" name="rec" /><br/>
+<input type="text" size="9" name="txt" /><br/>
+<anchor><go href="comm.wml" method="get"><postfield name="a" value="spm" /><postfield name="rec" value="$(rec)"/><postfield name="txt" value="$(txt)" /></go>senden</anchor>';
+}
+?>
+</p>
+</card>
+</wml>
